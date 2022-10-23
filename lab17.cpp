@@ -1,7 +1,9 @@
-﻿#include <iostream>
+#include <iostream>
 #include <Windows.h>
+#include<vector>
+#include<string>
 
-
+static std::string ch_hor = "-", ch_ver = "|", ch_ddia = "/", ch_rddia = "\\", ch_udia = "\\", ch_ver_hor = "|-", ch_udia_hor = "\\-", ch_ddia_hor = "/-", ch_ver_spa = "| ";
 struct tree {
     int znach;
     tree* l;
@@ -105,23 +107,19 @@ void konz(struct tree* root) {
 }
 
 
-
-
-void Dob(tree* tree , int k) {
-    if (tree->l == NULL) {
-        tree->l = (struct tree*)malloc(sizeof(struct tree));
-        tree->l->znach = k;
-        tree->l->l = tree->l->r = tree->l->p = NULL;
-        return void();
+struct tree* addtre(int x, tree* tr) {
+    if (tr == NULL) { // Если дерева нет, то формируем корень
+        tr = new tree; // память под узел
+        tr->znach = x;   // поле данных
+        tr->l = NULL;
+        tr->r = NULL; // ветви инициализируем пустотой
     }
-
-    Dob(tree->l, k);
-    return void();
-    Dob(tree->r, k);
-    return void();
-    
+    else  if (x < tr->znach)   // условие добавление левого потомка
+        tr->l = addtre(x, tr->l);
+    else    // условие добавление правого потомка
+        tr->r = addtre(x, tr->r);
+    return(tr);
 }
-
 
 
 int Poisk(tree* rt, int k) {
@@ -144,31 +142,83 @@ int Poisk(tree* rt, int k) {
 
 
 
-void freemem(tree* tree) {
-    if (tree != NULL) {
-        freemem(tree->l);
-        freemem(tree->r);
-        delete(tree);
+void dump(tree const* node, bool high = true, std::vector<std::string> const& lpref = std::vector<std::string>(), std::vector<std::string> const& cpref = std::vector<std::string>(), std::vector<std::string> const& rpref = std::vector<std::string>(), bool root = true, bool left = true, std::shared_ptr<std::vector<std::vector<std::string>>> lines = nullptr) {
+    if (!node) return;
+    typedef std::vector<std::string> VS;
+    auto VSCat = [](VS const& a, VS const& b) { auto r = a; r.insert(r.end(), b.begin(), b.end()); return r; };
+    if (root) lines = std::make_shared<std::vector<VS>>();
+    if (node->l)
+        dump(node->l, high, VSCat(lpref, high ? VS({ " ", " " }) : VS({ " " })), VSCat(lpref, high ? VS({ ch_ddia, ch_ver }) : VS({ ch_ddia })), VSCat(lpref, high ? VS({ ch_hor, " " }) : VS({ ch_hor })), false, true, lines);
+    auto sval = std::to_string(node->znach);
+    size_t sm = left || sval.empty() ? sval.size() / 2 : ((sval.size() + 1) / 2 - 1);
+    for (size_t i = 0; i < sval.size(); ++i)
+        lines->push_back(VSCat(i < sm ? lpref : i == sm ? cpref : rpref, { std::string(1, sval[i]) }));
+    if (node->r)
+        dump(node->r, high, VSCat(rpref, high ? VS({ ch_hor, " " }) : VS({ ch_hor })), VSCat(rpref, high ? VS({ ch_rddia, ch_ver }) : VS({ ch_rddia })), VSCat(rpref, high ? VS({ " ", " " }) : VS({ " " })), false, false, lines);
+    if (root) {
+        VS out;
+        for (size_t l = 0;; ++l) {
+            bool last = true;
+            std::string line;
+            for (size_t i = 0; i < lines->size(); ++i)
+                if (l < (*lines).at(i).size()) {
+                    line += lines->at(i)[l];
+                    last = false;
+                }
+                else line += " ";
+            if (last) break;
+            out.push_back(line);
+        }
+        for (size_t i = 0; i < out.size(); ++i)
+            std::cout << out[i] << std::endl;
     }
 }
 
 
 
-void SuperPoisk(tree* rt, int k) {
 
-    if (rt != NULL) {
-        if (rt->znach == k) {
-            freemem(rt);
-            return;
-        }
+tree* DeleteNode(tree* node, int val) {
+    if (node == NULL)
+        return node;
+
+    if (val == node->znach) {
+
+        tree* tmp;
+        if (node->r == NULL)
+            tmp = node->l;
         else {
-            if (rt->l != NULL)
-                SuperPoisk(rt->l, k);
-            if (rt->r != NULL)
-                 SuperPoisk(rt->r, k);
+
+            tree* ptr = node->r;
+            if (ptr->l == NULL) {
+                ptr->l = node->l;
+                tmp = ptr;
+            }
+            else {
+
+                tree* pmin = ptr->l;
+                while (pmin->l != NULL) {
+                    ptr = pmin;
+                    pmin = ptr->l;
+                }
+                ptr->l = pmin->r;
+                pmin->l = node->l;
+                pmin->r = node->r;
+                tmp = pmin;
+            }
         }
+
+        delete node;
+        return tmp;
     }
+    else if (val != node->znach)
+        node->l = DeleteNode(node->l, val);
+    else
+        node->r = DeleteNode(node->r, val);
+    return node;
 }
+
+
+
 
 int main()
 {
@@ -206,7 +256,7 @@ int main()
         std::cout << std::endl;
         std::cout << "Если вы хотите узнать, есть ли в дереве некоторое число, то нажмите 1" << std::endl;
         std::cout << "Если вы хотите удалить некоторую ветвь, то нажмите 2" << std::endl;
-        std::cout << "Если вы хотите добавитб некоторое число, то нажмите 3" << std::endl;
+        std::cout << "Если вы хотите добавить некоторое число, то нажмите 3" << std::endl;
         std::cout << "Если вы хотите завершить программу, то нажмите 4" << std::endl;
         int jo;
         std::cin >> jo;
@@ -227,18 +277,23 @@ int main()
         }
         else if (jo ==2) {
             std::cout << "Введите число, с которого начинается ветвь" << std::endl;
-            int giojo;
-                std::cin >> giojo;
-            SuperPoisk(root, giojo);
+            int yyy;
+            std::cin >> yyy;
+            root =DeleteNode(root, yyy);
+   
+      
         }
         else if (jo==3) {
             std::cout << "Введите число" << std::endl;
-            int uuuuuu;
-                std::cin >> uuuuuu;
-            Dob(root, uuuuuu);
+            int jj;
+            std::cin >> jj;
+            root = addtre(jj, root);
+          
         }
         else if (jo == 4) {
-            konz(root);
+            std::cout << std::endl;
+            //prim(root);
+            dump(root);
             break;
         }
 
